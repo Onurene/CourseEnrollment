@@ -1,15 +1,15 @@
 -- create database
 .open titanonline.db
 
--- use write ahead log mode (best for most web related)
+-- write ahead log modE
 PRAGMA journal_mode=WAL;
 -- enforce fk constraints
 PRAGMA foreign_keys=ON;
 
--- apply migrations
+-- create tables
 
 CREATE TABLE IF NOT EXISTS department (
-  id INTEGER PRIMARY KEY,
+  code TEXT NOT NULL PRIMARY KEY,
   name TEXT NOT NULL
 );
 
@@ -30,10 +30,10 @@ CREATE TABLE IF NOT EXISTS student (
 
 CREATE TABLE IF NOT EXISTS course (
   course_no INTEGER NOT NULL,
-  department_no INTEGER NOT NULL REFERENCES department(id),
+  department_code TEXT NOT NULL REFERENCES department(code),
   title TEXT NOT NULL,
   description TEXT,
-  PRIMARY KEY(course_no, department_no)
+  PRIMARY KEY(course_no, department_code)
 );
 
 CREATE TABLE IF NOT EXISTS course_section (
@@ -63,7 +63,6 @@ CREATE TABLE IF NOT EXISTS enrollment (
   UNIQUE(section_id, student_id)
 );
 
-
 CREATE TABLE IF NOT EXISTS droplist (
   section_id INTEGER NOT NULL REFERENCES course_section(id) ON DELETE CASCADE,
   student_id INTEGER NOT NULL REFERENCES student(id),
@@ -72,15 +71,13 @@ CREATE TABLE IF NOT EXISTS droplist (
   UNIQUE(section_id, student_id)
 );
 
-
 -- seed  the database using csv files
 
--- todo: update csv files
--- .import --csv departments.csv department
--- .import --csv professors.csv professor
--- .import --csv students.csv student
--- .import --csv courses.csv course
--- .import --csv sections.csv section
--- .import --csv waitlists.csv waitlist
--- .import --csv droplists.csv droplist
--- .import --csv enrollments.csv enrollment
+.import --csv departments.csv department
+.import --csv professors.csv professor
+.import --csv students.csv student
+.import --csv courses.csv course
+.import --csv sections.csv section
+.import --csv waitlists.csv waitlist
+.import --csv droplists.csv droplist
+.import --csv enrollments.csv enrollment
