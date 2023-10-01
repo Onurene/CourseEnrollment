@@ -17,36 +17,36 @@ CREATE TABLE IF NOT EXISTS professor (
   id INTEGER NOT NULL PRIMARY KEY,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
-  email TEXT NOT NULL
+  email TEXT NOT NULL,
   phone INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS student (
-  id INTEGER NOT NULL PRIMARY KEY,
+  id INTEGER PRIMARY KEY,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   email TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS course (
-  course_no INTEGER NOT NULL,
   department_code TEXT NOT NULL REFERENCES department(code),
+  course_no INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
-  PRIMARY KEY(course_no, department_code)
+  UNIQUE(department_code, course_no)
 );
 
 CREATE TABLE IF NOT EXISTS course_section (
-  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  section_no INTEGER NOT NULL,
+  id INTEGER PRIMARY KEY,
+  dept_code INTEGER NOT NULL REFERENCES course(department_code),
   course_num INTEGER NOT NULL REFERENCES course(course_no),
-  prof_id INTEGER NOT NULL REFERENCES professor(id),
+  section_no INTEGER NOT NULL,
   semester TEXT NOT NULL CHECK (semester in ('FA', 'WI', 'SP', 'SU')),
   year INTEGER NOT NULL,
+  prof_id INTEGER NOT NULL REFERENCES professor(id),
   room_num INTEGER NOT NULL,
   room_capacity INTEGER NOT NULL,
-  waitlist_capacity INTEGER NOT NULL,
-  UNIQUE(section_no, course_num, semester, year)
+  UNIQUE(dept_code, course_num, section_no, semester, year)
 );
 
 CREATE TABLE IF NOT EXISTS waitlist (
