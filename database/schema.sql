@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS course (
   department_code TEXT NOT NULL REFERENCES department(code),
   course_no INTEGER NOT NULL,
   title TEXT NOT NULL,
-  description TEXT,  
+  description TEXT,
+  srart_day DATE NOT NULL,
   enrollment_start DATETIME NOT NULL,
   enrollment_end DATETIME NOT NULL,
   PRIMARY KEY (department_code, course_no)
