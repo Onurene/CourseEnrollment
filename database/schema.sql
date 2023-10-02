@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS course_section (
   prof_id INTEGER NOT NULL REFERENCES professor(id),
   room_num INTEGER NOT NULL,
   room_capacity INTEGER NOT NULL,
+  course_start_date DATE NOT NULL,
   enrollment_start DATETIME NOT NULL,
   enrollment_end DATETIME NOT NULL,
   UNIQUE(dept_code, course_num, section_no, semester, year),
