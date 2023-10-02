@@ -1,1 +1,0 @@
-Execute the commands in sqlite3_commands.sql file to setup Database
