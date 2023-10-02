@@ -33,9 +33,6 @@ CREATE TABLE IF NOT EXISTS course (
   course_no INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
-  srart_day DATE NOT NULL,
-  enrollment_start DATETIME NOT NULL,
-  enrollment_end DATETIME NOT NULL,
   PRIMARY KEY (department_code, course_no)
 );
 
@@ -49,6 +46,8 @@ CREATE TABLE IF NOT EXISTS course_section (
   prof_id INTEGER NOT NULL REFERENCES professor(id),
   room_num INTEGER NOT NULL,
   room_capacity INTEGER NOT NULL,
+  enrollment_start DATETIME NOT NULL,
+  enrollment_end DATETIME NOT NULL,
   UNIQUE(dept_code, course_num, section_no, semester, year),
   FOREIGN KEY (dept_code, course_num) REFERENCES course(department_code, course_no)
 );
