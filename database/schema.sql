@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS course_section (
   dept_code TEXT NOT NULL,
   course_num INTEGER NOT NULL,
   section_no INTEGER NOT NULL,
-  semester TEXT NOT NULL,
+  semester TEXT NOT NULL CHECK (semester in ('FA', 'WI', 'SP', 'SU')),
   year INTEGER NOT NULL,
   prof_id INTEGER NOT NULL REFERENCES professor(id),
   room_num INTEGER NOT NULL,
