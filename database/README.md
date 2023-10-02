@@ -1,1 +1,3 @@
-Execute the commands in schema.sql file to setup Database
+Execute following command on the terminal to setup the database
+
+sqlite3 titanonline.db -separator ',' < schema.sql

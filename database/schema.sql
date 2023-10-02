@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS droplist (
 .import --csv data/professors.csv professor
 .import --csv data/students.csv student
 .import --csv data/courses.csv course
-.import --csv data/sections.csv section
+.import --csv data/sections.csv course_section
 .import --csv data/waitlists.csv waitlist
 .import --csv data/droplists.csv droplist
 .import --csv data/enrollments.csv enrollment
