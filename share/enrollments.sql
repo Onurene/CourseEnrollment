@@ -5,11 +5,10 @@ CREATE TABLE enrollments (
     -- here we use on delete restrict because a strudent's enrollment status may be important information
     -- and we don't want to delete it if the section is deleted  (eg. to determine if a student is full time)
     section_id INTEGER NOT NULL REFERENCES course_section(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES student(id),
+    student_id INTEGER NOT NULL REFERENCES students(id),
     enrollment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(section_id, student_id)
 );
-
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2,12345678,'2023-08-21 09:00:00');
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2,23456789,'2023-08-22 09:00:00');
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2,34567890,'2023-08-23 09:00:00');
@@ -40,6 +39,4 @@ INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2, 121
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2, 12112381, '2023-08-25 15:55:00');
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2, 12112382, '2023-08-26 12:20:00');
 INSERT INTO enrollments (section_id, student_id, enrollment_date) VALUES (2, 12112383, '2023-08-27 14:10:00');
-
-
 COMMIT;
