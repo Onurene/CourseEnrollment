@@ -33,13 +33,13 @@ CREATE TABLE IF NOT EXISTS course (
   course_no INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
-  UNIQUE(department_code, course_no)
+  PRIMARY KEY (department_code, course_no)
 );
 
 CREATE TABLE IF NOT EXISTS course_section (
   id INTEGER PRIMARY KEY,
-  dept_code INTEGER NOT NULL REFERENCES course(department_code),
-  course_num INTEGER NOT NULL REFERENCES course(course_no),
+  dept_code TEXT NOT NULL,
+  course_num INTEGER NOT NULL,
   section_no INTEGER NOT NULL,
   semester TEXT NOT NULL CHECK (semester in ('FA', 'WI', 'SP', 'SU')),
   year INTEGER NOT NULL,
@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS course_section (
   room_num INTEGER NOT NULL,
   room_capacity INTEGER NOT NULL,
   UNIQUE(dept_code, course_num, section_no, semester, year)
+FOREIGN KEY (dept_code, course_num) REFERENCES course(department_code, course_no)
 );
 
 CREATE TABLE IF NOT EXISTS waitlist (
