@@ -1,1 +1,1 @@
-Execute the commands in sqlite3_commands.sql file to setup Database
+Execute the commands in schema.sql file to setup Database

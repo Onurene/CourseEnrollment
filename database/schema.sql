@@ -77,11 +77,11 @@ CREATE TABLE IF NOT EXISTS droplist (
 
 -- seed  the database using csv files
 
-.import --csv departments.csv department
-.import --csv professors.csv professor
-.import --csv students.csv student
-.import --csv courses.csv course
-.import --csv sections.csv section
-.import --csv waitlists.csv waitlist
-.import --csv droplists.csv droplist
-.import --csv enrollments.csv enrollment
+.import --csv data/departments.csv department
+.import --csv data/professors.csv professor
+.import --csv data/students.csv student
+.import --csv data/courses.csv course
+.import --csv data/sections.csv section
+.import --csv data/waitlists.csv waitlist
+.import --csv data/droplists.csv droplist
+.import --csv data/enrollments.csv enrollment
