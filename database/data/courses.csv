@@ -1,4 +1,7 @@
-"Advanced Database Management", "CPSC 531", 1, "John Doe", 30, 10
-"Advanced Computer Graphics", "CPSC 566", 1, "John Snow", 30, 10
-"Expert System Design", "CPSC 583", 1, "Anand Kumar", 30, 5
-"Artificial Neural Network", "CPSC 585", 1, "Poonam Vyas", 30, 8
+"CPSC", 335, "Algorithm Engineering", "Introductory course"
+"CPSC", 481, "Artificial Intelligence", "Introductory course"
+"CPSC", 521, "Advanced DBMS", "Advanced course"
+"ECON", 100, "The Economic Environment", "Introductory course" 
+"ECON", 315, "Intermediate Business Microeconomics", "Introductory course"
+"ACCT", 201, "Financial Accounting", "Introductory course"
+"ACCT", 301, "Intermediate Accounting", "Introductory course"
