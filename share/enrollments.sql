@@ -5,7 +5,7 @@ CREATE TABLE enrollments (
     -- here we use on delete restrict because a strudent's enrollment status may be important information
     -- and we don't want to delete it if the section is deleted  (eg. to determine if a student is full time)
     section_id INTEGER NOT NULL REFERENCES course_section(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES student(id),
+    student_id INTEGER NOT NULL REFERENCES students(id),
     enrollment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(section_id, student_id)
 );
