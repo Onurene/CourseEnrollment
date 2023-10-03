@@ -1,3 +1,4 @@
+PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 BEGIN TRANSACTION;
 DROP TABLE IF EXISTS departments;
