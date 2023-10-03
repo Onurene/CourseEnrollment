@@ -8,3 +8,7 @@
 ### Specifications
 
 ### Usage
+#### Execute following commands to setup db
+* sh /bin/init.sh
+
+
