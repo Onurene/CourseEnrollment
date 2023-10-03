@@ -1,8 +1,8 @@
-PRAGMA foreigh_keys = ON;
+PRAGMA foreign_keys = ON;
 BEGIN TRANSACTION;
 DROP TABLE IF EXISTS course;
 CREATE TABLE course (
-  department_code TEXT NOT NULL REFERENCES department(code),
+  department_code TEXT NOT NULL REFERENCES departments(code),
   course_no INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
