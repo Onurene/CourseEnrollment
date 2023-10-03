@@ -1,4 +1,4 @@
-PRAGMA foreigh_keys = ON;
+PRAGMA foreign_keys = ON;
 BEGIN TRANSACTION;
 DROP TABLE IF EXISTS course_section;
 CREATE TABLE course_section (
@@ -8,8 +8,8 @@ CREATE TABLE course_section (
   section_no INTEGER NOT NULL,
   semester TEXT NOT NULL,
   year INTEGER NOT NULL,
-  prof_id INTEGER NOT NULL REFERENCES professor(id),
-  room_num INTEGER NOT NULL REFERENCES room(num),
+  prof_id INTEGER NOT NULL REFERENCES professors(id),
+  room_num INTEGER NOT NULL,
   room_capacity INTEGER NOT NULL,
   course_start_date TEXT NOT NULL,
   enrollment_start TEXT NOT NULL,
