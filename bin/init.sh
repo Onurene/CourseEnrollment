@@ -1,4 +1,3 @@
-sqlite3 ./var/titanonline.db < ./share/init.sql
 sqlite3 ./var/titanonline.db < ./share/departments.sql
 sqlite3 ./var/titanonline.db < ./share/professors.sql
 sqlite3 ./var/titanonline.db < ./share/students.sql
