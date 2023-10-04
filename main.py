@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-from typing import List
+from contextlib import contextmanager
+from typing import List, Optional
 import sqlite3
 
 
@@ -11,15 +11,12 @@ class Course(BaseModel):
     title: str
     description: str
 
-@asynccontextmanager
-async def db_conn():
-    conn = sqlite3.connect()
-    conn.row_factory = sqlite3.Row
 
-    try:
+@contextmanager
+def db_conn():
+    with sqlite3.connect('./var/titanonline.db') as conn:
+        conn.row_factory = sqlite3.Row
         yield conn
-    finally:
-        await conn.close()
 
 
 app = FastAPI()
@@ -27,11 +24,16 @@ app = FastAPI()
 
 @app.get("/courses")
 def get_courses() -> List[Course]:
-    async with db_conn() as db:
-    conn = sqlite3.connect('./var/titanonline.db')
-    conn.row_factory = sqlite3.Row
-    db = conn.cursor()
-    rows = db.execute('SELECT * FROM course;').fetchall()
-    courses = [dict(ix) for ix in rows]
+    with db_conn() as db:
+        rows = db.execute('SELECT * FROM course;').fetchall()
+        courses = [dict(item) for item in rows]
+
     return courses
+
+@app.get("/course/{dept}/{course_no}")
+def get_course(dept: str, course_no: int):
+    with db_conn() as db:
+        course = db.execute('SELECT * FROM course WHERE department_code=? AND course_no=?', [ dept, course_no ]).fetchone()
+
+        return course
 

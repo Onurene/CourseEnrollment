@@ -14,3 +14,4 @@ INSERT INTO departments(code, name) VALUES('SOC', 'Sociology');
 INSERT INTO departments(code, name) VALUES('PSYC', 'Psychology');
 INSERT INTO departments(code, name) VALUES('PHRN', 'Phrenology');
 COMMIT;
+
