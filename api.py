@@ -149,7 +149,7 @@ def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends
     
     Raises:
     - HTTPException (404): If the section with the specified ID is not found.
-    - HTTPException (409): If there is a conflict in the update operation (e.g., duplicate section details).
+    - HTTPException (409): If there is a conflict in the delete operation.
     """
     try:
         curr = db.execute("DELETE FROM course_section WHERE id=?;", [id])
