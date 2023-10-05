@@ -42,8 +42,8 @@ app = FastAPI()
 
 # Getting specific professors by using their id, then finding the courses they 
 # teach to then find their current enrollments.
-@app.get("/professors/{id}/course_sections")
-def get_professor(
+@app.get("/professors/{id}/enrollments")
+def get_professor_enrollments(
     id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
     cur = db.execute(f"SELECT * FROM PROFESSORS WHERE id = {id} LIMIT 1")
     professor = cur.fetchall()
@@ -70,3 +70,37 @@ def get_professor(
         enrollment_li.extend(enrollments)
 
     return {"professor": professor, "enrollments": enrollment_li}
+
+
+# This api is similar to enrollment api made above. Get the professor id, then go to 
+# courses the are teaching to get the course.id, to find the students who dropped 
+# the class.
+
+@app.get("/professors/{id}/droplists")
+def get_professor_droplists(
+    id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    cur = db.execute(f"SELECT * FROM PROFESSORS WHERE id = {id} LIMIT 1")
+    professor = cur.fetchall()
+
+    if not professor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Professor not found"
+        )
+    
+    cur = db.execute(f"SELECT * FROM COURSE_SECTION WHERE prof_id = {id}")
+    course_sections = cur.fetchall()
+
+    course_sections_li = []
+
+    for course in course_sections:
+        course_sections_li.append(course)
+
+    
+    droplist_li = []
+    for course in course_sections_li:
+        cur = db.execute(f"SELECT * FROM DROPLIST WHERE section_id = {course['id']}")
+        droplist = cur.fetchall()
+        
+        droplist_li.extend(droplist)
+
+    return {"professor": professor, "enrollments": droplist_li}
