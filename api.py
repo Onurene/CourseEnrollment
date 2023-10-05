@@ -45,6 +45,24 @@ def get_db():
 def create_course(
     course: Course, response: Response, db: sqlite3.Connection = Depends(get_db)
 ):
+    """
+    Create course
+    
+    Creates a new course with the provided details.
+    
+    Parameters:
+    - `course` (CourseInput): JSON body input for the course with the following fields:
+        - `department_code` (str): The department code for the course.
+        - `course_no` (int): The course number.
+        - `title` (str): The title of the course.
+        - `description` (str): A description of the course.
+
+    Returns:
+    - dict: A dictionary containing the details of the created item.
+    
+    Raises:
+    - HTTPException (409): If a conflict occurs (e.g., duplicate course).
+    """
     record = dict(course)
     try:
         cur = db.execute(
@@ -66,6 +84,32 @@ def create_course(
 def create_section(
     section: Section, response: Response, db: sqlite3.Connection = Depends(get_db)
 ):
+    """
+    Create Section
+    
+    Creates a new section.
+    
+    Parameters:
+    - `section` (Section): The JSON object representing the section with the following properties:
+        - `id` (int): The section ID.
+        - `dept_code` (str): Department code.
+        - `course_num` (int): Course number.
+        - `section_no` (int): Section number.
+        - `semester` (str): Semester name (SP, SU, FA, WI).
+        - `year` (int): Academic year.
+        - `prof_id` (int): Professor ID.
+        - `room_num` (int): Room number.
+        - `room_capacity` (int): Room capacity.
+        - `course_start_date` (str): Course start date (format: "YYYY-MM-DD").
+        - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD").
+        - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD").
+        
+    Returns:
+    - dict: A dictionary containing the details of the created item.
+    
+    Raises:
+    - HTTPException (409): If a conflict occurs (e.g., duplicate course).
+    """
     record = dict(section)
     try:
         cur = db.execute(
@@ -91,6 +135,22 @@ def create_section(
 
 @app.delete("/sections/{id}", status_code=status.HTTP_200_OK)
 def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    """
+    Delete section
+    
+    Deletes a specific section.
+    
+    Parameters:
+    - `id` (int): The ID of the section to delete.
+    
+    Returns:
+    - dict: A dictionary indicating the success of the deletion operation.
+      Example: {"message": "Item deleted successfully"}
+    
+    Raises:
+    - HTTPException (404): If the section with the specified ID is not found.
+    - HTTPException (409): If there is a conflict in the update operation (e.g., duplicate section details).
+    """
     try:
         curr = db.execute("DELETE FROM course_section WHERE id=?;", [id])
         
@@ -106,10 +166,38 @@ def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends
             detail={"type": type(e).__name__, "msg": str(e)},
         )
 
-    return {"message": "Record has been deleted successfully."}
+    return {"message": "Item deleted successfully"}
 
 @app.patch("/sections/{id}", status_code=status.HTTP_200_OK)
 def update_section(id: int, section: Section, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    """
+    Patch Section
+    
+    Updates specific details of a section.
+    
+    Parameters:
+    - `section` (Section): The JSON object representing the section with the following properties:
+        - `id` (int): The section ID.
+        - `dept_code` (str): Department code.
+        - `course_num` (int): Course number.
+        - `section_no` (int): Section number.
+        - `semester` (str): Semester name (SP, SU, FA, WI).
+        - `year` (int): Academic year.
+        - `prof_id` (int): Professor ID.
+        - `room_num` (int): Room number.
+        - `room_capacity` (int): Room capacity.
+        - `course_start_date` (str): Course start date (format: "YYYY-MM-DD").
+        - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD").
+        - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD").
+    
+    Returns:
+    - dict: A dictionary indicating the success of the update operation.
+      Example: {"message": "Section updated successfully"}
+      
+    Raises:
+    - HTTPException (404): If the section with the specified ID is not found.
+    - HTTPException (409): If there is a conflict in the update operation (e.g., duplicate section details).
+    """
     try:
         # Excluding fields that have not been set
         section = section.dict(exclude_unset=True)
