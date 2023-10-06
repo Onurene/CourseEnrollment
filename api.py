@@ -18,7 +18,6 @@ class Course(BaseModel):
     description: str
 
 class SectionPatch(BaseModel):
-    id: int
     section_no: Optional[int] = None
     prof_id: Optional[int] = None
     room_num: Optional[int] = None
@@ -28,6 +27,7 @@ class SectionPatch(BaseModel):
     enrollment_end: Optional[str] = None
 
 class SectionCreate(BaseModel):
+    id: int
     dept_code: str
     course_num: int
     section_no: int
@@ -109,8 +109,8 @@ def create_section(
         - `room_num` (int): Room number.
         - `room_capacity` (int): Room capacity.
         - `course_start_date` (str): Course start date (format: "YYYY-MM-DD").
-        - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD").
-        - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD").
+        - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD HH:MM:SS.SSS").
+        - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD HH:MM:SS.SSS").
         
     Returns:
     - dict: A dictionary containing the details of the created item.
@@ -195,8 +195,8 @@ def update_section(id: int, section: SectionPatch, response: Response, db: sqlit
         - `room_num` (int, optional): Room number.
         - `room_capacity` (int, optional): Room capacity.
         - `course_start_date` (str, optional): Course start date (format: "YYYY-MM-DD").
-        - `enrollment_start` (str, optional): Enrollment start date (format: "YYYY-MM-DD").
-        - `enrollment_end` (str, optional): Enrollment end date (format: "YYYY-MM-DD").
+        - `enrollment_start` (str, optional): Enrollment start date (format: "YYYY-MM-DD HH:MM:SS.SSS").
+        - `enrollment_end` (str, optional): Enrollment end date (format: "YYYY-MM-DD HH:MM:SS.SSS").
     
     Returns:
     - dict: A dictionary indicating the success of the update operation.
