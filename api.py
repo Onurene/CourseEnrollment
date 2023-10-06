@@ -17,19 +17,28 @@ class Course(BaseModel):
     title: str
     description: str
 
-class Section(BaseModel):
-    id: int = None
-    dept_code: Optional[str] = None
-    course_num: Optional[int] = None
+class SectionPatch(BaseModel):
+    id: int
     section_no: Optional[int] = None
-    semester: Optional[str] = None
-    year: Optional[int] = None
     prof_id: Optional[int] = None
     room_num: Optional[int] = None
     room_capacity: Optional[int] = None
     course_start_date: Optional[str] = None
     enrollment_start: Optional[str] = None
     enrollment_end: Optional[str] = None
+
+class SectionCreate(BaseModel):
+    dept_code: str
+    course_num: int
+    section_no: int
+    semester: str
+    year: int
+    prof_id: int
+    room_num: int
+    room_capacity: int
+    course_start_date: str
+    enrollment_start: str
+    enrollment_end: str
 
 settings = Settings()
 app = FastAPI()
@@ -81,7 +90,7 @@ def create_course(
 
 @app.post("/sections/", status_code=status.HTTP_201_CREATED)
 def create_section(
-    section: Section, response: Response, db: sqlite3.Connection = Depends(get_db)
+    section: SectionCreate, response: Response, db: sqlite3.Connection = Depends(get_db)
 ):
     """
     Create Section
@@ -168,7 +177,7 @@ def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends
     return {"message": "Item deleted successfully"}
 
 @app.patch("/sections/{id}", status_code=status.HTTP_200_OK)
-def update_section(id: int, section: Section, response: Response, db: sqlite3.Connection = Depends(get_db)):
+def update_section(id: int, section: SectionPatch, response: Response, db: sqlite3.Connection = Depends(get_db)):
     """
     Patch Section
     
