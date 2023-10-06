@@ -2,7 +2,7 @@ import collections
 import contextlib
 import logging.config
 import sqlite3
-import typing
+from typing import Optional
 
 from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
@@ -20,17 +20,17 @@ class Course(BaseModel):
 
 class Section(BaseModel):
     id: int = None
-    dept_code: str = None
-    course_num: int = None
-    section_no: int = None
-    semester: str = None
-    year: int = None
-    prof_id: int = None
-    room_num: int = None
-    room_capacity: int = None
-    course_start_date: str = None
-    enrollment_start: str = None
-    enrollment_end: str = None
+    dept_code: Optional[str] = None
+    course_num: Optional[int] = None
+    section_no: Optional[int] = None
+    semester: Optional[str] = None
+    year: Optional[int] = None
+    prof_id: Optional[int] = None
+    room_num: Optional[int] = None
+    room_capacity: Optional[int] = None
+    course_start_date: Optional[str] = None
+    enrollment_start: Optional[str] = None
+    enrollment_end: Optional[str] = None
 
 settings = Settings()
 app = FastAPI()
@@ -177,18 +177,18 @@ def update_section(id: int, section: Section, response: Response, db: sqlite3.Co
     
     Parameters:
     - `section` (Section): The JSON object representing the section with the following properties:
-        - `id` (int): The section ID.
-        - `dept_code` (str): Department code.
-        - `course_num` (int): Course number.
-        - `section_no` (int): Section number.
-        - `semester` (str): Semester name (SP, SU, FA, WI).
-        - `year` (int): Academic year.
-        - `prof_id` (int): Professor ID.
-        - `room_num` (int): Room number.
-        - `room_capacity` (int): Room capacity.
-        - `course_start_date` (str): Course start date (format: "YYYY-MM-DD").
-        - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD").
-        - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD").
+        - `id` (int, optional): The section ID.
+        - `dept_code` (str, optional): Department code.
+        - `course_num` (int, optional): Course number.
+        - `section_no` (int, optional): Section number.
+        - `semester` (str, optional): Semester abbreviation (SP, SU, FA, WI).
+        - `year` (int, optional): Academic year.
+        - `prof_id` (int, optional): Professor ID.
+        - `room_num` (int, optional): Room number.
+        - `room_capacity` (int, optional): Room capacity.
+        - `course_start_date` (str, optional): Course start date (format: "YYYY-MM-DD").
+        - `enrollment_start` (str, optional): Enrollment start date (format: "YYYY-MM-DD").
+        - `enrollment_end` (str, optional): Enrollment end date (format: "YYYY-MM-DD").
     
     Returns:
     - dict: A dictionary indicating the success of the update operation.
