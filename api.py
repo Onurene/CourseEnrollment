@@ -185,12 +185,7 @@ def update_section(id: int, section: SectionPatch, response: Response, db: sqlit
     
     Parameters:
     - `section` (Section): The JSON object representing the section with the following properties:
-        - `id` (int, optional): The section ID.
-        - `dept_code` (str, optional): Department code.
-        - `course_num` (int, optional): Course number.
         - `section_no` (int, optional): Section number.
-        - `semester` (str, optional): Semester abbreviation (SP, SU, FA, WI).
-        - `year` (int, optional): Academic year.
         - `prof_id` (int, optional): Professor ID.
         - `room_num` (int, optional): Room number.
         - `room_capacity` (int, optional): Room capacity.
