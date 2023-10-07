@@ -9,9 +9,10 @@ CREATE TABLE droplist (
     administrative BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY(section_id, student_id)
 );
-INSERT INTO droplist (section_id, student_id, drop_date) VALUES (2,65123456,'2023-08-24 09:00:00');
-INSERT INTO droplist (section_id, student_id, drop_date) VALUES (2,73123456,'2023-08-25 10:00:00');
-INSERT INTO droplist (section_id, student_id, drop_date) VALUES (2,76123456,'2023-08-27 11:30:00');
-INSERT INTO droplist (section_id, student_id, drop_date) VALUES (2,68123456,'2023-08-28 09:40:00');
-INSERT INTO droplist (section_id, student_id, drop_date) VALUES (2,85123456,'2023-08-29 09:50:00');
+INSERT INTO droplist (section_id, student_id, drop_date)
+VALUES (2, 65123456, '2023-08-24 09:00:00'),
+    (2, 73123456, '2023-08-25 10:00:00'),
+    (2, 76123456, '2023-08-27 11:30:00'),
+    (2, 68123456, '2023-08-28 09:40:00'),
+    (2, 85123456, '2023-08-29 09:50:00');
 COMMIT;
