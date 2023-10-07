@@ -30,10 +30,11 @@ def get_courses() -> List[Course]:
 
     return courses
 
+
 @app.get("/course/{dept}/{course_no}")
-def get_course(dept: str, course_no: int):
+def get_course_sections(dept: str, course_no: int):
     with db_conn() as db:
-        course = db.execute('SELECT * FROM course WHERE department_code=? AND course_no=?', [ dept, course_no ]).fetchone()
+        course = db.execute('SELECT * FROM course_section WHERE dept_code=? AND course_num=?', [ dept, course_no ]).fetchone()
 
         return course
 
