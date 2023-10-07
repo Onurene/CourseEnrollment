@@ -4,22 +4,18 @@ import contextlib
 import logging.config
 import sqlite3
 import typing
+from datetime import timedelta, datetime
 
 from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-
-
-
-
-
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
     logging_config: str
 
 
-class students(BaseModel):
+'''class students(BaseModel):
     Student_id : int
     Student_name :str
     Student_email : str
@@ -32,18 +28,21 @@ class StudentCourseEnrollment(BaseModel):
     Course_code :str
     course_section :str
     Course_attendance :str
-    Enrollment_status :str      
-
-class enrollments(BaseModel):
-    section_id: int
-    student_id: int
-    enrollment_date: str
+    Enrollment_status :str  
 
 class droplist(BaseModel):
     section_id :int
     student_id:int
     drop_date: str
     administrative: bool
+ 
+'''
+class enrollments(BaseModel):
+    section_id: int
+    student_id: int
+    enrollment_date: str
+
+
 
 
 def get_db():
@@ -60,15 +59,64 @@ app = FastAPI()
 
 @app.get("/classes/")
 def list_classes(db: sqlite3.Connection = Depends(get_db)):
-    classes = db.execute("SELECT * FROM Course")
+    classes = db.execute("SELECT c.*, cs.section_no as section_no FROM Course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num")
     return {"classes": classes.fetchall()}
 
 
 
-@app.get("/enrollments/")
-def list_enrollment(db: sqlite3.Connection = Depends(get_db)):
-    enrollments = db.execute("SELECT * FROM enrollments")
-    return {"enrollments": enrollments.fetchall()}
+@app.post("/enrollments/{student_id}/{course_no}/{section_no}")
+def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = Depends(get_db)):
+    max_enrollment_capacity = 30
+    waitlist_capacity = 15
+    
+    # check if enrollments are frozen
+    # check for enrollments beyond date boundaries
+    course_dates = db.execute("SELECT course_start_date,  strftime('%Y-%m-%d',enrollment_start) as enrollment_start FROM course_section where course_num = ? and section_no = ?", (course_no,section_no)).fetchone()
+    course_start_date = datetime.strptime(course_dates['course_start_date'],'%Y-%m-%d')
+    enrollment_start_date = datetime.strptime(course_dates['enrollment_start'],'%Y-%m-%d')    
+     
+    # enrollments are frozen
+    current_date = datetime.strptime(datetime.today().strftime('%Y-%m-%d') , '%Y-%m-%d')
+    if current_date > course_start_date+timedelta(days=7) or current_date<enrollment_start_date:
+        raise HTTPException(status_code=400, detail='Enrollments have been frozen')
+    
+    # check for class capacity and waitlist capacity
+    room_capacity = db.execute("SELECT room_capacity FROM course_section where course_num = ? and section_no = ?", (course_no,section_no)).fetchone()
+    section_id = db.execute("SELECT id FROM course_section where course_num = ? and section_no = ?",(course_no,section_no)).fetchone()
+    class_capacity = room_capacity['room_capacity']
+    section_id = section_id['id']
+    
+
+    if class_capacity>=1 and class_capacity<=max_enrollment_capacity:
+        # enrollment possible
+        # check if student is already enrolled into section id > then return UNIQUE constraint key violation error
+        already_enrolled = db.execute  ("Select count(*) cnt from enrollments where section_id=? and student_id=?" ,(section_id,student_id)).fetchone()
+        if already_enrolled['cnt']>0:
+            raise HTTPException(status_code = 400, detail = "Student already enrolled in this section")            
+
+
+        db.execute  ("INSERT INTO enrollments(section_id,student_id,enrollment_date) VALUES(?, ?, datetime('now'))" ,(section_id,student_id))
+        # decrement room capactity
+        db.execute("UPDATE course_section set room_capacity = room_capacity-1 where id = ?",(section_id,))
+        db.commit()
+        response = f"Student {student_id} enrolled successfully for section_id {section_id}, course_no {course_no},section_no {section_no}"
+
+    if class_capacity==0:
+        # check waitlist capacity
+        current_waitlist_capacity = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? group by section_id",(section_id,)).fetchone()
+        current_student_waitlist = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? and student_id = ? group by section_id,student_id",(section_id,student_id)).fetchone()
+
+        current_waitlist_capacity = current_waitlist_capacity['cnt']
+        if current_waitlist_capacity < waitlist_capacity and current_student_waitlist<3:
+            #push student in waitlist table
+            db.execute  ("INSERT INTO waitlist(section_id,student_id,waitlist_date) VALUES(?, ?, datetime('now'))" ,(section_id,student_id))
+            db.commit()
+            response = f"Student {student_id} waitlisted successfully for {section_id},{course_no},{section_no}"
+        else:
+            # enrollment not possible
+            raise HTTPException(status_code = 400, detail = "Class capacity and waitlist is full, cannot enroll currently")
+
+    return {"enrollments": response}
 
 
 @app.delete("/enrollments/{student_id}/{section_id}",status_code=status.HTTP_200_OK)
@@ -90,99 +138,3 @@ def remove_student(
 
 
         )
-    
-    
-
-
-
-
-
-
-
-# @app.delete("/classes/{course_no}",status_code=status.HTTP_200_OK)
-# def remove_section(
-#     course_no:int , db: sqlite3.Connection = Depends(get_db)
-# ):
-    
-#     cur = db.execute("Select * from course where course_no = ?",[course_no])
-#     entry = cur.fetchone()
-#     if(not entry):
-#         raise HTTPException(
-#                 status_code=status.HTTP_409_CONFLICT,
-#                 detail= 'Class Does Not Exist',
-#             )
-#     try:
-#         db.execute(
-#             """
-#             DELETE FROM course WHERE course_no= ? 
-#             """,
-#             [course_no])
-#         db.commit()
-#     except sqlite3.IntegrityError as e:
-#         db.rollback()
-#         raise HTTPException(
-#             status_code=status.HTTP_40, 
-#             detail={"type": type(e)._name_, "msg": str(e)},
-#         )
-#     return {'status':"Class Dropped Successfully"}
-
-
-
-# app.post("/enrollments/", status_code=status.HTTP_201_CREATED)
-# def create_enrollment(
-#     enrollment: enrollments, section:course_section, waitlist:waitlist ,response: Response, db: sqlite3.Connection = Depends(get_db)
-# ):
-#     cur = db.execute("select room_num, room_capacity from course_section where course_num = ?",[section.course_num])
-#     room_num, room_capacity = cur.fetchone()
-
-#     # Checking if student is Already enrolled to the course
-#     cur = db.execute("Select * from enrollments where section_id= ? and  student_id = ? and enrollment_date <= (datetime('now))",[enrollment.section_id, enrollment.student_id])
-#     sameClasses = cur.fetchall()
-#     if(sameClasses):
-#         raise HTTPException(status_code=409, detail="You are already enrolled") #HTTP status code 409, which stands for "Conflict." 
-    
-#     # Checking if Class is full then adding student to waitlist
-#     if(room_num >= room_capacity):
-
-#         # Checking if student is already on waitList
-#         cur = db.execute("Select * from waitlist where section_id = ? and  sudent_id = ?",[waitlist.section_id, waitlist.student_id])
-#         alreadyOnWaitlist = cur.fetchall()
-#         if(alreadyOnWaitlist):
-#             raise HTTPException(status_code=409, detail="You are already on waitlist") #HTTP status code 409, which stands for "Conflict." 
-#         # Checking that student is not on more than 3 waitlist (not checked)
-#         cur = db.execute("Select * from waitlist where student_id = ?",[waitlist.student_id])
-#         moreThanThree = cur.fetchall()
-#         if(len(moreThanThree)>3):
-#             raise HTTPException(status_code=409, detail="Class is full and You are already on three waitlists so, you can't be placed on a waitlist") #HTTP status code 409, which stands for "Conflict." 
-        
-#         # Adding to the waitlist if waitlist is not full
-#         cur = db.execute("Select * from waitlist where section_id= ?",[waitlist.section_id])
-#         entries = cur.fetchall()
-#         if(len(entries)>=15):
-#             raise HTTPException(status_code=403, detail="Waiting List if full for this class") # Forbidden
-#         waitListPosition = len(entries)+1
-#         e = dict(waitlist)
-#         try:
-#             cur = db.execute(
-#                 """
-#                 INSERT INTO waitlist(section_id,student_id,waitlist_date)
-#                 VALUES(?, ?, datetime('now')) 
-#                 """,
-#                 [waitlist.student_id,waitlist.section_id,waitListPosition]
-#             )
-#             db.commit()
-#         except sqlite3.IntegrityError as e:
-#             raise HTTPException(
-#                 status_code=status.HTTP_409_CONFLICT,
-#                 detail={"type": type(e)._name_, "msg": str(e)},
-#             )
-#         e["id"] = cur.lastrowid
-#         response.headers["Location"] = f"/waitlist/{e['id']}"
-#         message = f"Class is full you have been placed on waitlist position {waitListPosition}"
-#         # Sagar: new function Checking if student was enrolled earlier
-#         raise HTTPException(status_code=400, detail=message)
-    
-
-
-
-
