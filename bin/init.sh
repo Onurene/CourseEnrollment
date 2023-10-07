@@ -6,4 +6,4 @@ sqlite3 ./var/titanonline.db < ./share/sections.sql
 sqlite3 ./var/titanonline.db < ./share/enrollments.sql
 sqlite3 ./var/titanonline.db < ./share/waitlists.sql
 sqlite3 ./var/titanonline.db < ./share/droplists.sql
-sqlite3 ./var/titanonline.db < ./share/auto_freeze.sql
+sqlite3 ./var/titanonline.db < ./share/Configs.sql
