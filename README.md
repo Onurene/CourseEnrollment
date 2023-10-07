@@ -9,6 +9,6 @@
 
 ### Usage
 #### Execute following commands to setup db
-* sh /bin/init.sh
+* sh ./bin/init.sh
 
 
