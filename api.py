@@ -1,9 +1,8 @@
-
-import collections
 import contextlib
 import logging.config
 import sqlite3
-import typing
+from typing import Optional
+import collections
 from datetime import timedelta, datetime
 
 from fastapi import FastAPI, Depends, Response, HTTPException, status
@@ -14,26 +13,72 @@ class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
     logging_config: str
 
+class Course(BaseModel):
+    department_code: str
+    course_no: int
+    title: str
+    description: str
 
-class enrollments(BaseModel):
-    section_id: int
-    student_id: int
-    enrollment_date: str
+class SectionPatch(BaseModel):
+    section_no: Optional[int] = None
+    prof_id: Optional[int] = None
+    room_num: Optional[int] = None
+    room_capacity: Optional[int] = None
+    course_start_date: Optional[str] = None
+    enrollment_start: Optional[str] = None
+    enrollment_end: Optional[str] = None
+
+class SectionCreate(BaseModel):
+    id: int
+    dept_code: str
+    course_num: int
+    section_no: int
+    semester: str
+    year: int
+    prof_id: int
+    room_num: int
+    room_capacity: int
+    course_start_date: str
+    enrollment_start: str
+    enrollment_end: str
+
+settings = Settings()
+app = FastAPI()
 
 def get_db():
-    with contextlib.closing(sqlite3.connect("titanonline.db")) as db:
+    with contextlib.closing(sqlite3.connect(settings.database)) as db:
         db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys=ON")
         yield db
 
-app = FastAPI()
 
 @app.get("/classes/")
 def list_classes(db: sqlite3.Connection = Depends(get_db)):
+    """
+    List all available classes to the student
+
+    Returns:
+    - dict: A dictionary containing the details of the classes
+    """
+
     classes = db.execute("SELECT c.*, cs.section_no as section_no FROM course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num")
     return {"classes": classes.fetchall()}
 
 @app.post("/enrollments/{student_id}/{course_no}/{section_no}")
 def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = Depends(get_db)):
+    """
+    Lets a student enroll into the class
+
+    Returns either of the success messages based on the class room capacity and waitlist capacity
+    - student successfully enrolled into the class
+    - student successfully waitlisted into the class
+
+    Raises:
+    - HTTPException (400): If student tries to enroll outside the enrollment window).
+    - HTTPException (400): If student has already enrolled into the class.
+    - HTTPException (400): Class and waitlist capacity is full, cannot enroll
+
+    """
     max_enrollment_capacity = 30
     waitlist_capacity = 15
     
@@ -70,12 +115,13 @@ def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = 
         db.commit()
         response = f"Student {student_id} enrolled successfully for section_id {section_id}, course_no {course_no},section_no {section_no}"
 
-    if class_capacity==0:
+    elif class_capacity==0:
         # check waitlist capacity
         current_waitlist_capacity = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? group by section_id",(section_id,)).fetchone()
         current_student_waitlist = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? and student_id = ? group by section_id,student_id",(section_id,student_id)).fetchone()
 
         current_waitlist_capacity = current_waitlist_capacity['cnt']
+        current_student_waitlist = current_student_waitlist['cnt']
         if current_waitlist_capacity < waitlist_capacity and current_student_waitlist<3:
             #push student in waitlist table
             db.execute  ("INSERT INTO waitlist(section_id,student_id,waitlist_date) VALUES(?, ?, datetime('now'))" ,(section_id,student_id))
@@ -90,6 +136,6 @@ def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = 
 
 @app.post("/freezeenrollment/{flag}")
 def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
-    db.execute("UPDATE auto_freeze set auto_freeze_flag = ?",(flag,))
+    db.execute("UPDATE configs set automatic_enrollment = ?",(flag,))
     db.commit()
     return {"status_code ": 200}
