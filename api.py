@@ -2,7 +2,6 @@ import contextlib
 import logging.config
 import sqlite3
 from typing import Optional
-import collections
 from datetime import timedelta, datetime
 
 from fastapi import FastAPI, Depends, Response, HTTPException, status
