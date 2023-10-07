@@ -1,5 +1,4 @@
 import sqlite3
-from typing import Optional
 from fastapi import HTTPException, status
 
 def is_auto_enroll_enabled(db: sqlite3.Connection):
