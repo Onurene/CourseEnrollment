@@ -12,7 +12,10 @@ def is_auto_enroll_enabled(db: sqlite3.Connection):
     Returns:
         bool: True if automatic enrollment is enabled. Otherwise, False.
     """
-    return True
+    
+    cursor = db.execute("SELECT automatic_enrollment FROM configs")
+    result = cursor.fetchone()
+    return result[0] == 1
 
 def get_opening_sections(db: sqlite3.Connection):
     """
@@ -38,7 +41,7 @@ def get_opening_sections(db: sqlite3.Connection):
     rows = cursor.fetchall()
     return [row[0] for row in rows]
 
-def auto_enroll(db: sqlite3.Connection, section_id_list: Optional[list[int]] = None):
+def enroll_students_from_waitlist(db: sqlite3.Connection, section_id_list: list[int]):
     """
     This function checks the waitlist for available spots in the sections
     and enrolls students accordingly.
