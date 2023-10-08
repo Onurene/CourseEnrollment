@@ -338,21 +338,21 @@ def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
     return {"status_code ": 200}
 
 
-@router.post("/student/waitlist/{section_id}/position/")
+@router.get("/student/waitlist/{section_id}/{student_id}")
 def get_waitlist_position(
-    section_id: int, student: Student, db: sqlite3.Connection = Depends(get_db)
+        section_id: int, student_id: int , db: sqlite3.Connection = Depends(get_db)
 ):
     position = -1
 
     try:
         waitlist = db.execute(
             "SELECT student_id as sid FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
-            (section_id,),
+            [section_id]
         )
 
         for idx, item in enumerate(waitlist.fetchall()):
             print(idx, item["sid"])
-            if student.id == item["sid"]:
+            if student_id == item["sid"]:
                 position = idx + 1
 
     except sqlite3.IntegrityError as e:
@@ -392,13 +392,13 @@ def delete_waitlist(
 
 
 @router.get("/professor/waitlist/{section_id}")
-def get_waitlist(section_id: int, prof: Professor, db: sqlite3.Connection = Depends(get_db)):
+def get_waitlist(section_id: int, db: sqlite3.Connection = Depends(get_db)):
     watilist = []
 
     try:
         results = db.execute(
-            "SELECT * FROM waitlist WHERE section_id = ? AND prof_id = ? ORDER BY waitlist_date ASC",
-            [section_id, prof.id]
+            "SELECT * FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
+            [section_id]
         )
 
         if results.rowcount == 0:
