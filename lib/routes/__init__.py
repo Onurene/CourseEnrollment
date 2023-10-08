@@ -219,9 +219,6 @@ def list_classes(db: sqlite3.Connection = Depends(get_db)):
     return {"classes": classes.fetchall()}
 
 
-from pydantic import BaseModel
-
-
 @router.post("/enrollments/")
 def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get_db)):
     """
@@ -265,7 +262,7 @@ def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get
     #  raise HTTPException(
     #     status_code=400,
     #    detail="You are trying to enrolside the enrollment window",
-    # )
+    #)
 
     seats_taken = db.execute(
         "SELECT COUNT(*) FROM enrollments where section_id = ?;",
@@ -443,8 +440,33 @@ def drop_student(
     except sqlite3.IntegrityError as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_40, detail={"type": type(e)._name__, "msg": str(e)}
+            status_code=status.HTTP_40, detail={"type": type(e).__name__, "msg": str(e)}
         )
+
+#drop a class
+#Deleting student from enrollment with section_id and student_id
+#facing issue with autoenrollment
+
+@router.delete("/enrollments/course_section/{section_id}/student/{student_id}")
+def drop_self(prof_id: int , section_id: int, student_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+
+    try:
+        cur = db.execute("DELETE FROM ENROLLMENTS WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()
+        cur = db.execute("DELETE FROM WAITLIST WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()       
+        cur = db.execute("INSERT INTO droplist(section_id, student_id, drop_date) VALUES(?, ?, datetime('now'))", [section_id, student_id])
+        db.commit()
+
+        
+        # cur = db.execute("DELETE FROM waitlist LIMIT 1" )
+        # db.commit()
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_40, detail={"type": type(e).__name__, "msg": str(e)}
+        )
+
 
 # get waitlist position for a student
 
