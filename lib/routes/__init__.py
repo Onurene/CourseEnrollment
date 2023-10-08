@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Response, HTTPException, status
-from ..models import Course, SectionCreate, SectionPatch, Student, Enrollment, Professor
-from ..db import get_db
+
+from lib.utils.enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled
+from lib.models import Course, SectionCreate, SectionPatch, Student, Enrollment, Professor
+from lib.db import get_db
 import sqlite3
 from datetime import datetime
 
@@ -333,10 +335,118 @@ def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get
 
 @router.post("/freezeenrollment/{flag}")
 def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
-    db.execute("UPDATE configs set automatic_enrollment = ?", (flag,))
+    db.execute("UPDATE configs set automatic_enrollment = ?;", [flag])
     db.commit()
     return {"status_code ": 200}
 
+# Getting specific professors by using their id, then finding the courses they 
+# teach to then find their current enrollments.
+
+@router.get("/professors/{id}/enrollments")
+def get_professor_enrollments(
+    id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ? LIMIT 1", (id, ))
+    professor = cur.fetchall()
+
+    if not professor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Professor not found"
+        )
+    
+    cur = db.execute("SELECT * FROM COURSE_SECTION WHERE prof_id = ?", (id,))
+    course_sections = cur.fetchall()
+
+    course_sections_li = []
+
+    for course in course_sections:
+        course_sections_li.append(course)
+
+    
+    enrollment_li = []
+    for course in course_sections_li:
+        cur = db.execute("SELECT * FROM ENROLLMENTS WHERE section_id = ?", (course['id'],))
+        enrollments = cur.fetchall()
+        
+        enrollment_li.extend(enrollments)
+
+    return {"professor": professor, "enrollments": enrollment_li}
+
+
+# This api is similar to enrollment api made above. Get the professor id, then go to 
+# courses the are teaching to get the course.id, to find the students who dropped 
+# the class.
+
+@router.get("/professors/{id}/droplists")
+def get_professor_droplists(
+    id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ? LIMIT 1", (id,))
+    professor = cur.fetchall()
+
+    if not professor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Professor not found"
+        )
+    
+    cur = db.execute("SELECT * FROM COURSE_SECTION WHERE prof_id = ?", (id,))
+    course_sections = cur.fetchall()
+
+    course_sections_li = []
+
+    for course in course_sections:
+        course_sections_li.append(course)
+
+    
+    droplist_li = []
+    for course in course_sections_li:
+        cur = db.execute("SELECT * FROM DROPLIST WHERE section_id = ?", (course['id'],))
+        droplist = cur.fetchall()
+        
+        droplist_li.extend(droplist)
+
+    return {"professor": professor, "droplist": droplist_li}
+
+
+# Now, we must drop the student/s adminsitratively, the professor provide their id
+# and their student id that needs to be dropped.
+# Inspired by Viditi's code
+
+@router.delete("/professors/{prof_id}/course_section/{section_id}/student/{student_id}/drop")
+def drop_student(
+    prof_id: int, section_id: int, student_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
+    ):
+
+    cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ?", [prof_id])
+    professor = cur.fetchall()
+
+    if professor:
+        administrative = True
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Professor not found"
+        )
+
+    try:
+        cur = db.execute("DELETE FROM ENROLLMENTS WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()
+        cur = db.execute("DELETE FROM WAITLIST WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()       
+        cur = db.execute("INSERT INTO droplist(section_id, student_id, drop_date, administrative) VALUES(?, ?, datetime('now'), ?)", [section_id, student_id, administrative])
+        db.commit()
+
+        auto_enroll_enabled = is_auto_enroll_enabled(db)
+
+        if auto_enroll_enabled:        
+            enrollment_count = enroll_students_from_waitlist(db, [section_id])
+
+        return {"message": "Student dropped and inserted to droplist."}
+
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_40, detail={"type": type(e)._name__, "msg": str(e)}
+        )
+
+# get waitlist position for a student
 
 @router.get("/student/waitlist/{section_id}/{student_id}")
 def get_waitlist_position(
@@ -363,6 +473,7 @@ def get_waitlist_position(
 
     return {"position": position}
 
+# drop self from waitlist
 
 @router.delete("/student/waitlist/{section_id}")
 def delete_waitlist(
@@ -390,6 +501,7 @@ def delete_waitlist(
 
     return {"message": "successfully removed from waitlist"}
 
+# list students in waitlist for a section/class
 
 @router.get("/professor/waitlist/{section_id}")
 def get_waitlist(section_id: int, db: sqlite3.Connection = Depends(get_db)):
