@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Response, HTTPException, status
-from ..models import Course, SectionCreate, SectionPatch
+from ..models import Course, SectionCreate, SectionPatch, Student, Enrollment
 from ..db import get_db
 import sqlite3
 from datetime import datetime
@@ -174,7 +174,9 @@ def update_section(
         section_fields = section.dict(exclude_unset=True)
 
         # Create a list of column-placeholder pairs, separated by commas
-        keys = ", ".join([f"{key} = ?" for index, key in enumerate(section_fields.keys())])
+        keys = ", ".join(
+            [f"{key} = ?" for index, key in enumerate(section_fields.keys())]
+        )
 
         # Create a list of values to bind to the placeholders
         values = list(section_fields.values())  # List of values to be updated
@@ -210,15 +212,16 @@ def list_classes(db: sqlite3.Connection = Depends(get_db)):
     """
 
     classes = db.execute(
-        "SELECT c.*, cs.section_no as section_no FROM course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num"
+        "SELECT c.*, cs.id as section_id FROM course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num"
     )
     return {"classes": classes.fetchall()}
 
 
-@router.post("/enrollments/{student_id}/{course_no}/{section_no}")
-def enroll_students(
-    student_id, course_no, section_no, db: sqlite3.Connection = Depends(get_db)
-):
+from pydantic import BaseModel
+
+
+@router.post("/enrollments/")
+def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get_db)):
     """
     Lets a student enroll into the class
 
@@ -237,9 +240,14 @@ def enroll_students(
     waitlist_capacity = 15
 
     course_dates = db.execute(
-        "SELECT course_start_date, strftime('%Y-%m-%d',enrollment_start) as enrollment_start, strftime('%Y-%m-%d',enrollment_end) as enrollment_end FROM course_section where course_num = ? and section_no = ?",
-        (course_no, section_no),
+        "SELECT course_start_date, strftime('%Y-%m-%d',enrollment_start) as enrollment_start, strftime('%Y-%m-%d',enrollment_end) as enrollment_end FROM course_section where id = ?;",
+        [enrollment.section_id],
     ).fetchone()
+
+    if course_dates == None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="no sections found"
+        )
 
     # course_start_date = datetime.strptime(course_dates['course_start_date'],'%Y-%m-%d')
     enrollment_start_date = datetime.strptime(
@@ -247,33 +255,28 @@ def enroll_students(
     )
     enrollment_end_date = datetime.strptime(course_dates["enrollment_end"], "%Y-%m-%d")
 
-    # enrollments not allowed pre and post enrollment dates as defined in the db
-    current_date = datetime.strptime(datetime.today().strftime("%Y-%m-%d"), "%Y-%m-%d")
-    # if current_date > course_start_date+timedelta(days=7) or current_date<enrollment_start_date:
-    if current_date > enrollment_end_date or current_date < enrollment_start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="You are trying to enroll outside the enrollment window",
-        )
+    ## enrollments not allowed pre and post enrollment dates as defined in the db
+    # current_date = datetime.strptime(datetime.today().strftime("%Y-%m-%d"), "%Y-%m-%d")
+    ## if current_date > course_start_date+timedelta(days=7) or current_date<enrollment_start_date:
+    # if current_date > enrollment_end_date:
+    #   # or current_date < enrollment_start_date
+    #  raise HTTPException(
+    #     status_code=400,
+    #    detail="You are trying to enrolside the enrollment window",
+    # )
 
-    # check for class capacity and waitlist capacity
-    room_capacity = db.execute(
-        "SELECT room_capacity FROM course_section where course_num = ? and section_no = ?",
-        (course_no, section_no),
+    seats_taken = db.execute(
+        "SELECT COUNT(*) FROM enrollments where section_id = ?;",
+        [enrollment.section_id],
     ).fetchone()
-    section_id = db.execute(
-        "SELECT id FROM course_section where course_num = ? and section_no = ?",
-        (course_no, section_no),
-    ).fetchone()
-    class_capacity = room_capacity["room_capacity"]
-    section_id = section_id["id"]
+    available_seats = max_enrollment_capacity - seats_taken[0]
 
-    if class_capacity >= 1 and class_capacity <= max_enrollment_capacity:
+    if available_seats > 0:
         # enrollment possible
         # check if student is already enrolled into section id > then return UNIQUE constraint key violation error
         already_enrolled = db.execute(
             "Select count(*) cnt from enrollments where section_id=? and student_id=?",
-            (section_id, student_id),
+            (enrollment.section_id, enrollment.student_id),
         ).fetchone()
         if already_enrolled["cnt"] > 0:
             raise HTTPException(
@@ -282,29 +285,31 @@ def enroll_students(
 
         db.execute(
             "INSERT INTO enrollments(section_id,student_id,enrollment_date) VALUES(?, ?, datetime('now'))",
-            (section_id, student_id),
+            (enrollment.section_id, enrollment.student_id),
         )
-        # decrement room capactity
-        db.execute(
-            "UPDATE course_section set room_capacity = room_capacity-1 where id = ?",
-            (section_id,),
-        )
-        db.commit()
-        response = f"Student {student_id} enrolled successfully for section_id {section_id}, course_no {course_no},section_no {section_no}"
 
-    elif class_capacity == 0:
+        db.commit()
+        response = f"Student {enrollment.student_id} enrolled successfully for section_id {enrollment.section_id}"
+
+    elif available_seats == 0:
         # check waitlist capacity
         current_waitlist_capacity = db.execute(
-            "SELECT COUNT(*) cnt FROM waitlist where section_id = ? group by section_id",
-            (section_id,),
+            "SELECT COUNT(*) AS cnt FROM waitlist where section_id = ? group by section_id",
+            (enrollment.section_id,),
         ).fetchone()
+
+        print(current_waitlist_capacity[0])
+
         current_student_waitlist = db.execute(
-            "SELECT COUNT(*) cnt FROM waitlist where section_id = ? and student_id = ? group by section_id,student_id",
-            (section_id, student_id),
+            "SELECT COUNT(*) AS cnt FROM waitlist where section_id = ? and student_id = ?",
+            (enrollment.section_id, enrollment.student_id),
         ).fetchone()
+
+        print(current_student_waitlist)
 
         current_waitlist_capacity = current_waitlist_capacity["cnt"]
         current_student_waitlist = current_student_waitlist["cnt"]
+
         if (
             current_waitlist_capacity < waitlist_capacity
             and current_student_waitlist < 3
@@ -312,10 +317,10 @@ def enroll_students(
             # push student in waitlist table
             db.execute(
                 "INSERT INTO waitlist(section_id,student_id,waitlist_date) VALUES(?, ?, datetime('now'))",
-                (section_id, student_id),
+                (enrollment.section_id, enrollment.student_id),
             )
             db.commit()
-            response = f"Student {student_id} waitlisted successfully for {section_id},{course_no},{section_no}"
+            response = f"Student {enrollment.student_id} waitlisted successfully for {enrollment.section_id}"
     else:
         # enrollment not possible
         raise HTTPException(
@@ -331,3 +336,83 @@ def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
     db.execute("UPDATE configs set automatic_enrollment = ?", (flag,))
     db.commit()
     return {"status_code ": 200}
+
+
+@router.post("/student/waitlist/{section_id}/position/")
+def get_waitlist_position(
+    section_id: int, student: Student, db: sqlite3.Connection = Depends(get_db)
+):
+    position = -1
+
+    try:
+        waitlist = db.execute(
+            "SELECT student_id as sid FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
+            (section_id,),
+        )
+
+        for idx, item in enumerate(waitlist.fetchall()):
+            print(idx, item["sid"])
+            if student.id == item["sid"]:
+                position = idx + 1
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"position": position}
+
+
+@router.delete("/student/waitlist/{section_id}")
+def delete_waitlist(
+    section_id: int, student: Student, db: sqlite3.Connection = Depends(get_db)
+):
+    try:
+        result = db.execute(
+            "DELETE FROM waitlist WHERE section_id = ? AND student_id = ?;",
+            (section_id, student.id),
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Could not delete because no such enrollments exist",
+            )
+
+        db.commit()
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"message": "successfully removed from waitlist"}
+
+
+@router.get("/student/waitlist/{section_id}")
+def get_waitlist(section_id: int, db: sqlite3.Connection = Depends(get_db)):
+    watilist = []
+
+    try:
+        results = db.execute(
+            "SELECT * FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
+            [section_id],
+        )
+
+        if results.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="could not find the waitlist for that section",
+            )
+
+        waitlist = [r["student_id"] for r in results]
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"waitlist": waitlist}
