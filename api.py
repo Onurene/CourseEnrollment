@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-
+from enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled, get_opening_sections
 
 # class Settings(BaseSettings, env_file=".env", extra="ignore"):
 #     database: str
@@ -33,7 +33,6 @@ def get_logger():
 app = FastAPI()
 
 
-# logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
 
 # Getting specific professors by using their id, then finding the courses they 
 # teach to then find their current enrollments.
@@ -111,7 +110,6 @@ def drop_student(
     prof_id: int, section_id: int, student_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
     ):
 
-
     cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ?", [prof_id])
     professor = cur.fetchall()
 
@@ -129,6 +127,13 @@ def drop_student(
         db.commit()       
         cur = db.execute("INSERT INTO droplist(section_id, student_id, drop_date, administrative) VALUES(?, ?, datetime('now'), ?)", [section_id, student_id, administrative])
         db.commit()
+
+        auto_enroll_enabled = is_auto_enroll_enabled(db)
+
+        if auto_enroll_enabled:        
+            enrollment_count = enroll_students_from_waitlist(db, [section_id])
+
+        return {"message": "Student dropped and inserted to droplist."}
 
     except sqlite3.IntegrityError as e:
         db.rollback()
