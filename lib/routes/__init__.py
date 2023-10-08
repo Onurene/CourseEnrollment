@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 
-from lib.utils.enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled
+from lib.utils.enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled, get_opening_sections
 from lib.models import Course, SectionCreate, SectionPatch, Student, Enrollment, Professor
 from lib.db import get_db
 import sqlite3
@@ -335,8 +335,16 @@ def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get
 
 @router.post("/freezeenrollment/{flag}")
 def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
+    # toggle the flag
+    flag = 0 if flag == 1 else 1
+
     db.execute("UPDATE configs set automatic_enrollment = ?;", [flag])
     db.commit()
+
+    if flag == 1:
+      opening_sections = get_opening_sections(db)
+      enroll_students_from_waitlist(db, opening_sections)
+
     return {"status_code ": 200}
 
 # Getting specific professors by using their id, then finding the courses they 
