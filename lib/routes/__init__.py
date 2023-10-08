@@ -1,72 +1,24 @@
-import contextlib
-import logging.config
+from fastapi import APIRouter, Depends, Response, HTTPException, status
+
+from lib.utils.enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled
+from lib.models import Course, SectionCreate, SectionPatch, Student, Enrollment, Professor
+from lib.db import get_db
 import sqlite3
-from typing import Optional
-import collections
-from datetime import timedelta, datetime
+from datetime import datetime
 
-from fastapi import FastAPI, Depends, Response, HTTPException, status
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
-from enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled, get_opening_sections
 
-class Settings(BaseSettings, env_file=".env", extra="ignore"):
-    database: str
-    logging_config: str
+router = APIRouter()
 
-class Course(BaseModel):
-    department_code: str
-    course_no: int
-    title: str
-    description: str
 
-class SectionPatch(BaseModel):
-    section_no: Optional[int] = None
-    prof_id: Optional[int] = None
-    room_num: Optional[int] = None
-    room_capacity: Optional[int] = None
-    course_start_date: Optional[str] = None
-    enrollment_start: Optional[str] = None
-    enrollment_end: Optional[str] = None
-
-class SectionCreate(BaseModel):
-    id: int
-    dept_code: str
-    course_num: int
-    section_no: int
-    semester: str
-    year: int
-    prof_id: int
-    room_num: int
-    room_capacity: int
-    course_start_date: str
-    enrollment_start: str
-    enrollment_end: str
-
-class Student(BaseModel):
-    id: int
-    first_name: str 
-    last_name: str
-    email: str
-    
-settings = Settings()
-app = FastAPI()
-
-def get_db():
-    with contextlib.closing(sqlite3.connect(settings.database)) as db:
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        yield db
-
-@app.post("/courses/", status_code=status.HTTP_201_CREATED)
+@router.post("/courses/", status_code=status.HTTP_201_CREATED)
 def create_course(
     course: Course, response: Response, db: sqlite3.Connection = Depends(get_db)
 ):
     """
     Create course
-    
+
     Creates a new course with the provided details.
-    
+
     Parameters:
     - `course` (CourseInput): JSON body input for the course with the following fields:
         - `department_code` (str): The department code for the course.
@@ -76,7 +28,7 @@ def create_course(
 
     Returns:
     - dict: A dictionary containing the details of the created item.
-    
+
     Raises:
     - HTTPException (409): If a conflict occurs (e.g., duplicate course).
     """
@@ -97,15 +49,16 @@ def create_course(
         )
     return record
 
-@app.post("/sections/", status_code=status.HTTP_201_CREATED)
+
+@router.post("/sections/", status_code=status.HTTP_201_CREATED)
 def create_section(
     section: SectionCreate, response: Response, db: sqlite3.Connection = Depends(get_db)
 ):
     """
     Create Section
-    
+
     Creates a new section.
-    
+
     Parameters:
     - `section` (Section): The JSON object representing the section with the following properties:
         - `id` (int): The section ID.
@@ -120,10 +73,10 @@ def create_section(
         - `course_start_date` (str): Course start date (format: "YYYY-MM-DD").
         - `enrollment_start` (str): Enrollment start date (format: "YYYY-MM-DD HH:MM:SS.SSS").
         - `enrollment_end` (str): Enrollment end date (format: "YYYY-MM-DD HH:MM:SS.SSS").
-        
+
     Returns:
     - dict: A dictionary containing the details of the created item.
-    
+
     Raises:
     - HTTPException (409): If a conflict occurs (e.g., duplicate course).
     """
@@ -150,32 +103,34 @@ def create_section(
     response.headers["Location"] = f"/sections/{record['id']}"
     return record
 
-@app.delete("/sections/{id}", status_code=status.HTTP_200_OK)
-def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+
+@router.delete("/sections/{id}", status_code=status.HTTP_200_OK)
+def delete_section(
+    id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
+):
     """
     Delete section
-    
+
     Deletes a specific section.
-    
+
     Parameters:
     - `id` (int): The ID of the section to delete.
-    
+
     Returns:
     - dict: A dictionary indicating the success of the deletion operation.
       Example: {"message": "Item deleted successfully"}
-    
+
     Raises:
     - HTTPException (404): If the section with the specified ID is not found.
     - HTTPException (409): If there is a conflict in the delete operation.
     """
     try:
         curr = db.execute("DELETE FROM course_section WHERE id=?;", [id])
-        
+
         if curr.rowcount == 0:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Record not Found"
-                )
+                status_code=status.HTTP_404_NOT_FOUND, detail="Record not Found"
+            )
         db.commit()
     except sqlite3.IntegrityError as e:
         raise HTTPException(
@@ -185,13 +140,19 @@ def delete_section(id: int, response: Response, db: sqlite3.Connection = Depends
 
     return {"message": "Item deleted successfully"}
 
-@app.patch("/sections/{id}", status_code=status.HTTP_200_OK)
-def update_section(id: int, section: SectionPatch, response: Response, db: sqlite3.Connection = Depends(get_db)):
+
+@router.patch("/sections/{id}", status_code=status.HTTP_200_OK)
+def update_section(
+    id: int,
+    section: SectionPatch,
+    response: Response,
+    db: sqlite3.Connection = Depends(get_db),
+):
     """
     Patch Section
-    
+
     Updates specific details of a section.
-    
+
     Parameters:
     - `section` (Section): The JSON object representing the section with the following properties:
         - `section_no` (int, optional): Section number.
@@ -201,39 +162,39 @@ def update_section(id: int, section: SectionPatch, response: Response, db: sqlit
         - `course_start_date` (str, optional): Course start date (format: "YYYY-MM-DD").
         - `enrollment_start` (str, optional): Enrollment start date (format: "YYYY-MM-DD HH:MM:SS.SSS").
         - `enrollment_end` (str, optional): Enrollment end date (format: "YYYY-MM-DD HH:MM:SS.SSS").
-    
+
     Returns:
     - dict: A dictionary indicating the success of the update operation.
       Example: {"message": "Section updated successfully"}
-      
+
     Raises:
     - HTTPException (404): If the section with the specified ID is not found.
     - HTTPException (409): If there is a conflict in the update operation (e.g., duplicate section details).
     """
     try:
         # Excluding fields that have not been set
-        section = section.dict(exclude_unset=True)
-        
+        section_fields = section.dict(exclude_unset=True)
+
         # Create a list of column-placeholder pairs, separated by commas
-        keys = ", ".join([f"{key} = ?" for index, key in enumerate(section.keys())])
-        
+        keys = ", ".join(
+            [f"{key} = ?" for index, key in enumerate(section_fields.keys())]
+        )
+
         # Create a list of values to bind to the placeholders
-        values = list(section.values()) # List of values to be updated
-        values.append(id) # WHERE id = ?
+        values = list(section_fields.values())  # List of values to be updated
+        values.append(id)  # WHERE id = ?
 
         # Define a parameterized query with placeholders & values
         update_query = f"UPDATE course_section SET {keys} WHERE id = ?"
 
         # Execute the query
         curr = db.execute(update_query, values)
-        
 
         # Raise exeption if Record not Found
         if curr.rowcount == 0:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Record not Found"
-                )
+                status_code=status.HTTP_404_NOT_FOUND, detail="Record not Found"
+            )
         db.commit()
     except sqlite3.Error as e:
         raise HTTPException(
@@ -242,7 +203,8 @@ def update_section(id: int, section: SectionPatch, response: Response, db: sqlit
         )
     return {"message": "Section updated successfully"}
 
-@app.get("/classes/")
+
+@router.get("/classes/")
 def list_classes(db: sqlite3.Connection = Depends(get_db)):
     """
     List all available classes to the student
@@ -251,11 +213,17 @@ def list_classes(db: sqlite3.Connection = Depends(get_db)):
     - dict: A dictionary containing the details of the classes
     """
 
-    classes = db.execute("SELECT c.*, cs.section_no as section_no FROM course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num")
+    classes = db.execute(
+        "SELECT c.*, cs.id as section_id FROM course c inner join course_section cs  on c.department_code = cs.dept_code and c.course_no = cs.course_num"
+    )
     return {"classes": classes.fetchall()}
 
-@app.post("/enrollments/{student_id}/{course_no}/{section_no}")
-def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = Depends(get_db)):
+
+from pydantic import BaseModel
+
+
+@router.post("/enrollments/")
+def enroll_students(enrollment: Enrollment, db: sqlite3.Connection = Depends(get_db)):
     """
     Lets a student enroll into the class
 
@@ -269,71 +237,112 @@ def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = 
     - HTTPException (400): Class and waitlist capacity is full, cannot enroll
 
     """
+    response = ""
     max_enrollment_capacity = 30
     waitlist_capacity = 15
-    
-    course_dates = db.execute("SELECT course_start_date, strftime('%Y-%m-%d',enrollment_start) as enrollment_start, strftime('%Y-%m-%d',enrollment_end) as enrollment_end FROM course_section where course_num = ? and section_no = ?", (course_no,section_no)).fetchone()
-    
-    # course_start_date = datetime.strptime(course_dates['course_start_date'],'%Y-%m-%d')
-    enrollment_start_date = datetime.strptime(course_dates['enrollment_start'],'%Y-%m-%d')    
-    enrollment_end_date = datetime.strptime(course_dates['enrollment_end'],'%Y-%m-%d')    
-    
-    # enrollments not allowed pre and post enrollment dates as defined in the db
-    current_date = datetime.strptime(datetime.today().strftime('%Y-%m-%d') , '%Y-%m-%d')
-    #if current_date > course_start_date+timedelta(days=7) or current_date<enrollment_start_date:
-    if current_date > enrollment_end_date or current_date < enrollment_start_date:
-        raise HTTPException(status_code=400, detail='You are trying to enroll outside the enrollment window')
-    
-    # check for class capacity and waitlist capacity
-    room_capacity = db.execute("SELECT room_capacity FROM course_section where course_num = ? and section_no = ?", (course_no,section_no)).fetchone()
-    section_id = db.execute("SELECT id FROM course_section where course_num = ? and section_no = ?",(course_no,section_no)).fetchone()
-    class_capacity = room_capacity['room_capacity']
-    section_id = section_id['id']
-    
 
-    if class_capacity>=1 and class_capacity<=max_enrollment_capacity:
+    course_dates = db.execute(
+        "SELECT course_start_date, strftime('%Y-%m-%d',enrollment_start) as enrollment_start, strftime('%Y-%m-%d',enrollment_end) as enrollment_end FROM course_section where id = ?;",
+        [enrollment.section_id],
+    ).fetchone()
+
+    if course_dates == None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="no sections found"
+        )
+
+    # course_start_date = datetime.strptime(course_dates['course_start_date'],'%Y-%m-%d')
+    enrollment_start_date = datetime.strptime(
+        course_dates["enrollment_start"], "%Y-%m-%d"
+    )
+    enrollment_end_date = datetime.strptime(course_dates["enrollment_end"], "%Y-%m-%d")
+
+    ## enrollments not allowed pre and post enrollment dates as defined in the db
+    # current_date = datetime.strptime(datetime.today().strftime("%Y-%m-%d"), "%Y-%m-%d")
+    ## if current_date > course_start_date+timedelta(days=7) or current_date<enrollment_start_date:
+    # if current_date > enrollment_end_date:
+    #   # or current_date < enrollment_start_date
+    #  raise HTTPException(
+    #     status_code=400,
+    #    detail="You are trying to enrolside the enrollment window",
+    # )
+
+    seats_taken = db.execute(
+        "SELECT COUNT(*) FROM enrollments where section_id = ?;",
+        [enrollment.section_id],
+    ).fetchone()
+    available_seats = max_enrollment_capacity - seats_taken[0]
+
+    if available_seats > 0:
         # enrollment possible
         # check if student is already enrolled into section id > then return UNIQUE constraint key violation error
-        already_enrolled = db.execute  ("Select count(*) cnt from enrollments where section_id=? and student_id=?" ,(section_id,student_id)).fetchone()
-        if already_enrolled['cnt']>0:
-            raise HTTPException(status_code = 400, detail = "Student already enrolled in this section")            
+        already_enrolled = db.execute(
+            "Select count(*) cnt from enrollments where section_id=? and student_id=?",
+            (enrollment.section_id, enrollment.student_id),
+        ).fetchone()
+        if already_enrolled["cnt"] > 0:
+            raise HTTPException(
+                status_code=400, detail="Student already enrolled in this section"
+            )
 
+        db.execute(
+            "INSERT INTO enrollments(section_id,student_id,enrollment_date) VALUES(?, ?, datetime('now'))",
+            (enrollment.section_id, enrollment.student_id),
+        )
 
-        db.execute  ("INSERT INTO enrollments(section_id,student_id,enrollment_date) VALUES(?, ?, datetime('now'))" ,(section_id,student_id))
-        # decrement room capactity
-        db.execute("UPDATE course_section set room_capacity = room_capacity-1 where id = ?",(section_id,))
         db.commit()
-        response = f"Student {student_id} enrolled successfully for section_id {section_id}, course_no {course_no},section_no {section_no}"
+        response = f"Student {enrollment.student_id} enrolled successfully for section_id {enrollment.section_id}"
 
-    elif class_capacity==0:
+    elif available_seats == 0:
         # check waitlist capacity
-        current_waitlist_capacity = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? group by section_id",(section_id,)).fetchone()
-        current_student_waitlist = db.execute("SELECT COUNT(*) cnt FROM waitlist where section_id = ? and student_id = ? group by section_id,student_id",(section_id,student_id)).fetchone()
+        current_waitlist_capacity = db.execute(
+            "SELECT COUNT(*) AS cnt FROM waitlist where section_id = ? group by section_id",
+            (enrollment.section_id,),
+        ).fetchone()
 
-        current_waitlist_capacity = current_waitlist_capacity['cnt']
-        current_student_waitlist = current_student_waitlist['cnt']
-        if current_waitlist_capacity < waitlist_capacity and current_student_waitlist<3:
-            #push student in waitlist table
-            db.execute  ("INSERT INTO waitlist(section_id,student_id,waitlist_date) VALUES(?, ?, datetime('now'))" ,(section_id,student_id))
+        print(current_waitlist_capacity[0])
+
+        current_student_waitlist = db.execute(
+            "SELECT COUNT(*) AS cnt FROM waitlist where section_id = ? and student_id = ?",
+            (enrollment.section_id, enrollment.student_id),
+        ).fetchone()
+
+        print(current_student_waitlist)
+
+        current_waitlist_capacity = current_waitlist_capacity["cnt"]
+        current_student_waitlist = current_student_waitlist["cnt"]
+
+        if (
+            current_waitlist_capacity < waitlist_capacity
+            and current_student_waitlist < 3
+        ):
+            # push student in waitlist table
+            db.execute(
+                "INSERT INTO waitlist(section_id,student_id,waitlist_date) VALUES(?, ?, datetime('now'))",
+                (enrollment.section_id, enrollment.student_id),
+            )
             db.commit()
-            response = f"Student {student_id} waitlisted successfully for {section_id},{course_no},{section_no}"
-        else:
-            # enrollment not possible
-            raise HTTPException(status_code = 400, detail = "Class capacity and waitlist is full, cannot enroll currently")
+            response = f"Student {enrollment.student_id} waitlisted successfully for {enrollment.section_id}"
+    else:
+        # enrollment not possible
+        raise HTTPException(
+            status_code=400,
+            detail="Class capacity and waitlist is full, cannot enroll currently",
+        )
 
     return {"enrollments": response}
 
 
-@app.post("/freezeenrollment/{flag}")
+@router.post("/freezeenrollment/{flag}")
 def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
-    db.execute("UPDATE configs set automatic_enrollment = ?",(flag,))
+    db.execute("UPDATE configs set automatic_enrollment = ?;", [flag])
     db.commit()
     return {"status_code ": 200}
 
 # Getting specific professors by using their id, then finding the courses they 
 # teach to then find their current enrollments.
 
-@app.get("/professors/{id}/enrollments")
+@router.get("/professors/{id}/enrollments")
 def get_professor_enrollments(
     id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
     cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ? LIMIT 1", (id, ))
@@ -367,7 +376,7 @@ def get_professor_enrollments(
 # courses the are teaching to get the course.id, to find the students who dropped 
 # the class.
 
-@app.get("/professors/{id}/droplists")
+@router.get("/professors/{id}/droplists")
 def get_professor_droplists(
     id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
     cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ? LIMIT 1", (id,))
@@ -401,7 +410,7 @@ def get_professor_droplists(
 # and their student id that needs to be dropped.
 # Inspired by Viditi's code
 
-@app.delete("/professors/{prof_id}/course_section/{section_id}/student/{student_id}/drop")
+@router.delete("/professors/{prof_id}/course_section/{section_id}/student/{student_id}/drop")
 def drop_student(
     prof_id: int, section_id: int, student_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
     ):
@@ -436,3 +445,86 @@ def drop_student(
         raise HTTPException(
             status_code=status.HTTP_40, detail={"type": type(e)._name__, "msg": str(e)}
         )
+
+# get waitlist position for a student
+
+@router.get("/student/waitlist/{section_id}/{student_id}")
+def get_waitlist_position(
+        section_id: int, student_id: int , db: sqlite3.Connection = Depends(get_db)
+):
+    position = -1
+
+    try:
+        waitlist = db.execute(
+            "SELECT student_id as sid FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
+            [section_id]
+        )
+
+        for idx, item in enumerate(waitlist.fetchall()):
+            print(idx, item["sid"])
+            if student_id == item["sid"]:
+                position = idx + 1
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"position": position}
+
+# drop self from waitlist
+
+@router.delete("/student/waitlist/{section_id}")
+def delete_waitlist(
+    section_id: int, student: Student, db: sqlite3.Connection = Depends(get_db)
+):
+    try:
+        result = db.execute(
+            "DELETE FROM waitlist WHERE section_id = ? AND student_id = ?;",
+            [section_id, student.id],
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Could not delete because no such enrollments exist",
+            )
+
+        db.commit()
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"message": "successfully removed from waitlist"}
+
+# list students in waitlist for a section/class
+
+@router.get("/professor/waitlist/{section_id}")
+def get_waitlist(section_id: int, db: sqlite3.Connection = Depends(get_db)):
+    watilist = []
+
+    try:
+        results = db.execute(
+            "SELECT * FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
+            [section_id]
+        )
+
+        if results.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="could not find the waitlist for that section",
+            )
+
+        waitlist = [r["student_id"] for r in results]
+
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    return {"waitlist": waitlist}

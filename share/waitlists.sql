@@ -8,9 +8,10 @@ CREATE TABLE waitlist (
     waitlist_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(section_id, student_id)
 );
-INSERT INTO waitlist (section_id, student_id, waitlist_date) VALUES (2,65123456,'2023-08-28 09:00:00');
-INSERT INTO waitlist (section_id, student_id, waitlist_date) VALUES (2,73123456,'2023-08-28 10:00:00');
-INSERT INTO waitlist (section_id, student_id, waitlist_date) VALUES (2,76123456,'2023-08-28 11:30:00');
-INSERT INTO waitlist (section_id, student_id, waitlist_date) VALUES (2,68123456,'2023-08-29 09:40:00');
-INSERT INTO waitlist (section_id, student_id, waitlist_date) VALUES (2,85123456,'2023-08-29 09:50:00');
+INSERT INTO waitlist (section_id, student_id, waitlist_date)
+VALUES (2, 65123456, '2023-08-28 09:00:00'),
+    (2, 73123456, '2023-08-28 10:00:00'),
+    (2, 76123456, '2023-08-28 11:30:00'),
+    (2, 68123456, '2023-08-29 09:40:00'),
+    (2, 85123456, '2023-08-29 09:50:00');
 COMMIT;

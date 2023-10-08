@@ -14,7 +14,13 @@ CREATE TABLE course_section (
   course_start_date TEXT NOT NULL,
   enrollment_start TEXT NOT NULL,
   enrollment_end TEXT NOT NULL,
-  UNIQUE (dept_code, course_num, section_no, semester, year),
+  UNIQUE (
+    dept_code,
+    course_num,
+    section_no,
+    semester,
+    year
+  ),
   FOREIGN KEY (dept_code, course_num) REFERENCES course(department_code, course_no)
 );
 INSERT INTO course_section (id, dept_code, course_num, section_no, semester, year, prof_id, room_num, room_capacity, course_start_date, enrollment_start, enrollment_end) VALUES (1, 'CPSC', 101, 1, 'SU', 2023, 1, 101, 30, '2023-06-12', '2023-06-01 09:00:00', '2023-06-15 17:00:00');
