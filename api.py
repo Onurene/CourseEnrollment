@@ -42,6 +42,12 @@ class SectionCreate(BaseModel):
     enrollment_start: str
     enrollment_end: str
 
+class Student(BaseModel):
+    id: int
+    first_name: str 
+    last_name: str
+    email: str
+    
 settings = Settings()
 app = FastAPI()
 
@@ -322,12 +328,6 @@ def freeze_auto_enrollment(flag, db: sqlite3.Connection = Depends(get_db)):
     db.execute("UPDATE configs set automatic_enrollment = ?",(flag,))
     db.commit()
     return {"status_code ": 200}
-
-class Student(BaseModel):
-    id: int
-    first_name: str 
-    last_name: str
-    email: str
 
 # Getting specific professors by using their id, then finding the courses they 
 # teach to then find their current enrollments.
