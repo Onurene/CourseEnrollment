@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
+from enrollment_helper import enroll_students_from_waitlist, is_auto_enroll_enabled, get_opening_sections
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
