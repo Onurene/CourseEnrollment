@@ -15,7 +15,7 @@ class Settings(BaseSettings, env_file=".env", extra="ignore"):
     logging_config: str
 
 
-'''class students(BaseModel):
+class students(BaseModel):
     Student_id : int
     Student_name :str
     Student_email : str
@@ -36,11 +36,18 @@ class droplist(BaseModel):
     drop_date: str
     administrative: bool
  
-'''
+
 class enrollments(BaseModel):
     section_id: int
     student_id: int
     enrollment_date: str
+
+class professors(BaseModel):
+    id: int
+    first_name : str    
+    last_name : str
+    email: str
+    phone : int
 
 
 
@@ -119,22 +126,59 @@ def enroll_students(student_id, course_no, section_no, db: sqlite3.Connection = 
     return {"enrollments": response}
 
 
-@app.delete("/enrollments/{student_id}/{section_id}",status_code=status.HTTP_200_OK)
-def remove_student(
-    student_id: int, section_id: int, db:sqlite3.Connection = Depends(get_db)
+# @app.delete("/enrollments/{student_id}/{section_id}",status_code=status.HTTP_200_OK)
+# def remove_student(
+#     student_id: int, section_id: int, db:sqlite3.Connection = Depends(get_db)
     
-):
-    try:
-        cur = db.execute("DELETE FROM enrollments WHERE student_id=? AND section_id=?",[student_id,section_id])
-        db.commit()
-        cur = db.execute  ("INSERT INTO droplist(section_id,student_id,drop_date,administrative) VALUES(?, ?, datetime('now'), FALSE)" ,[section_id,student_id])
-        db.commit()
+# ):
+#     try:
+#         cur = db.execute("DELETE FROM enrollments WHERE student_id=? AND section_id=?",[student_id,section_id])
+#         db.commit()
+#         cur = db.execute  ("INSERT INTO droplist(section_id,student_id,drop_date,administrative) VALUES(?, ?, datetime('now'), FALSE)" ,[section_id,student_id])
+#         db.commit()
+        
+#         cur = db.execute  ("INSERT INTO enrollments(section_id,student_id,drop_date,administrative) VALUES(?, ?, datetime('now'), FALSE)" ,[section_id,student_id])
+#         db.commit()
+#         cur = db.execute("DELETE FROM waitlist LIMIT 1" )
+#         db.commit()
                  
+#     except sqlite3.IntegrityError as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_40, 
+#             detail={"type": type(e)._name_, "msg": str(e)},
+
+
+#         )
+@app.delete("/professors/{prof_id}/course_section/{section_id}/student/{student_id}/drop")
+def drop_student(
+    prof_id: int , section_id: int, student_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
+    ):
+
+    if prof_id is not None:
+        cur = db.execute("SELECT * FROM PROFESSORS WHERE id = ?", [prof_id])
+        professor = cur.fetchall()
+
+        if not professor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Professor not found"
+            )
+        else:
+            administrative = True
+        
+
+    try:
+        cur = db.execute("DELETE FROM ENROLLMENTS WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()
+        cur = db.execute("DELETE FROM WAITLIST WHERE student_id=? AND section_id=?", [student_id, section_id])
+        db.commit()       
+        cur = db.execute("INSERT INTO droplist(section_id, student_id, drop_date, administrative) VALUES(?, ?, datetime('now'), ?)", [section_id, student_id, administrative])
+        db.commit()
+        cur = db.execute("DELETE FROM waitlist LIMIT 1" )
+        db.commit()
     except sqlite3.IntegrityError as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_40, 
-            detail={"type": type(e)._name_, "msg": str(e)},
-
-
+            status_code=status.HTTP_40, detail={"type": type(e)._name__, "msg": str(e)}
         )
+
