@@ -371,7 +371,7 @@ def delete_waitlist(
     try:
         result = db.execute(
             "DELETE FROM waitlist WHERE section_id = ? AND student_id = ?;",
-            (section_id, student.id),
+            [section_id, student.id],
         )
 
         if result.rowcount == 0:
@@ -391,14 +391,25 @@ def delete_waitlist(
     return {"message": "successfully removed from waitlist"}
 
 
-@router.get("/student/waitlist/{section_id}")
-def get_waitlist(section_id: int, db: sqlite3.Connection = Depends(get_db)):
+from pydantic import BaseModel, EmailStr
+
+
+class Professor(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: int
+
+
+@router.get("/professor/waitlist/{section_id}")
+def get_waitlist(section_id: int, prof: Professor, db: sqlite3.Connection = Depends(get_db)):
     watilist = []
 
     try:
         results = db.execute(
-            "SELECT * FROM waitlist WHERE section_id = ? ORDER BY waitlist_date ASC",
-            [section_id],
+            "SELECT * FROM waitlist WHERE section_id = ? AND prof_id = ? ORDER BY waitlist_date ASC",
+            [section_id, prof.id]
         )
 
         if results.rowcount == 0:
