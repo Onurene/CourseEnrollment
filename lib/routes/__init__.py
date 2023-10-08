@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Response, HTTPException, status
-from ..models import Course, SectionCreate, SectionPatch, Student, Enrollment
+from ..models import Course, SectionCreate, SectionPatch, Student, Enrollment, Professor
 from ..db import get_db
 import sqlite3
 from datetime import datetime
@@ -389,17 +389,6 @@ def delete_waitlist(
         )
 
     return {"message": "successfully removed from waitlist"}
-
-
-from pydantic import BaseModel, EmailStr
-
-
-class Professor(BaseModel):
-    id: int
-    first_name: str
-    last_name: str
-    email: EmailStr
-    phone: int
 
 
 @router.get("/professor/waitlist/{section_id}")

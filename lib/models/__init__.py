@@ -10,6 +10,14 @@ class Settings(BaseSettings, env_file="../.env", extra="ignore"):
     # logging_config: str
 
 
+class Professor(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: int
+
+
 class Student(BaseModel):
     id: int
     first_name: str
